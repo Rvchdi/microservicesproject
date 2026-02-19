@@ -28,19 +28,51 @@ app.get('/', async (req, res) => {
 // Create Sale
 app.post('/', async (req, res) => {
     try {
-        const { productId, quantity, total } = req.body;
-        if (!productId || !quantity || !total) return res.status(400).json({ error: 'Product ID, quantity and total are required' });
+        const { productId, customerId, quantity, total, status } = req.body;
+        if (!productId || !customerId || !quantity || !total) return res.status(400).json({ error: 'Product ID, Customer ID, quantity and total are required' });
 
         const newSale = await prisma.sale.create({
             data: {
                 productId: parseInt(productId),
+                customerId: parseInt(customerId),
                 quantity: parseInt(quantity),
-                total: parseFloat(total)
+                total: parseFloat(total),
+                status: status || "new"
             }
         });
         res.status(201).json(newSale);
     } catch (error) {
         res.status(500).json({ error: 'Error creating sale' });
+    }
+});
+
+// Update Sale Status
+app.put('/:id/status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        if (!status) return res.status(400).json({ error: 'Status is required' });
+
+        const updatedSale = await prisma.sale.update({
+            where: { id: parseInt(id) },
+            data: { status }
+        });
+        res.json(updatedSale);
+    } catch (error) {
+        res.status(500).json({ error: 'Error updating sale status' });
+    }
+});
+
+// Get Sales by Customer ID
+app.get('/customer/:customerId', async (req, res) => {
+    try {
+        const { customerId } = req.params;
+        const sales = await prisma.sale.findMany({
+            where: { customerId: parseInt(customerId) }
+        });
+        res.json(sales);
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching customer sales' });
     }
 });
 

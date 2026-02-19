@@ -18,7 +18,12 @@ app.get('/health', (req, res) => {
 // List Customers
 app.get('/', async (req, res) => {
     try {
-        const customers = await prisma.customer.findMany();
+        const { name, email } = req.query;
+        const where = {};
+        if (name) where.name = { contains: name };
+        if (email) where.email = { contains: email };
+
+        const customers = await prisma.customer.findMany({ where });
         res.json(customers);
     } catch (error) {
         res.status(500).json({ error: 'Error fetching customers' });
@@ -33,6 +38,21 @@ app.get('/:id', async (req, res) => {
             where: { id: parseInt(id) }
         });
         if (!customer) return res.status(404).json({ error: 'Customer not found' });
+
+        // Fetch Sales History
+        try {
+            const salesResponse = await fetch(`${process.env.SALES_SERVICE_URL || 'http://localhost:8004'}/customer/${id}`);
+            if (salesResponse.ok) {
+                const sales = await salesResponse.json();
+                customer.sales = sales;
+            } else {
+                customer.sales = [];
+            }
+        } catch (err) {
+            console.error('Error fetching sales history:', err);
+            customer.sales = [];
+        }
+
         res.json(customer);
     } catch (error) {
         res.status(500).json({ error: 'Error fetching customer' });
